@@ -5,8 +5,8 @@ import pandas as pd
 import sklearn
 
 # 데이터 적재
-oecd_bli = pd.read_csv("oecd_bli_20185.csv", thousands=',')
-gdp_per_capita = pd.read_csv("gdp_per_capita.csv", thousands=',', delimiter='\t', encoding='latin1', na_values="n/a")
+oecd_bli = pd.read_csv(r"c:\Users\jwryu87\OneDrive\work\Python\ML_practice\DATA\oecd_bli_20185.csv", thousands=',')
+gdp_per_capita = pd.read_csv(r"c:\Users\jwryu87\OneDrive\work\Python\ML_practice\DATA\gdp_per_capita.csv", thousands=',', delimiter='\t', encoding='latin1', na_values="n/a")
 
 # 데이터 준비
 country_status = prepare_country_stats(oecd_bli, gdp_per_capita)
