@@ -34,17 +34,9 @@ if __name__ == "__main__":
     # print(housing["ocean_proximity"].value_counts()) # value_counts 메서드
     # print(housing.describe()) # 숫자형 특성의 요약정보를 알려줌
     ###
-    # import matplotlib.pyplot as plt # 데이터 형태를 빠르게 검토하는 다른 방법은 각 숫자형 특성을 히스토그램으로 그려보는 것입니다.
-    # housing.hist(bins=50, figsize=(20, 15))
-    # plt.show()
+    import matplotlib.pyplot as plt # 데이터 형태를 빠르게 검토하는 다른 방법은 각 숫자형 특성을 히스토그램으로 그려보는 것입니다.
+    housing.hist(bins=50, figsize=(20, 15))
+    plt.show()
     ###
 
 
-import numpy as np
-
-def split_train_test(data, test_ratio):
-    shuffled_indices = np.random.permutation(len(data))
-    test_set_size = int(len(data) * test_ratio)
-    test_indices = shuffled_indices[:test_set_size]
-    train_indices = shuffled_indices[test_set_size:]
-    return data.iloc[train_indices], data.iloc[test_indices]
