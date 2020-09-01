@@ -85,7 +85,9 @@ from sklearn.model_selection import StratifiedShuffleSplit
 
 split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 for train_index, test_index in split.split(housing, housing["income_cat"]):
-    strat_train_set = housing.loc[train_index]
-    strat_test_set = housing.loc[test_index]
+    strat_train_set = housing.loc[train_index] # 훈련세트
+    strat_test_set = housing.loc[test_index]   # 테스트세트
 
 # 테스트 세트 생성은 머신러닝 프로젝트에서 아주 중요한 부분이다.
+
+
