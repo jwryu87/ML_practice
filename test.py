@@ -7,7 +7,7 @@ DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
 HOUSING_URL = DOWNLOAD_ROOT + "datasets/housing/housing.tgz"
 
-# 데이터 import
+# (1) 데이터 import
 # - url로 접속하여 압축파일 다운로드 후
 # - 디렉토리 만들고 압축을 풀어 csv 파일로 만들기
 def fetch_housing_data(housing_url=HOUSING_URL, housing_path=HOUSING_PATH):
@@ -19,6 +19,8 @@ def fetch_housing_data(housing_url=HOUSING_URL, housing_path=HOUSING_PATH):
     housing_tgz.extractall(path=housing_path)
     housing_tgz.close()
 
+
+# (2) pandas 연습
 # csv 파일을 pandas로 읽기
 def load_housing_data(housing_path=HOUSING_PATH):
     csv_path = os.path.join(housing_path, "housing.csv")
@@ -28,7 +30,6 @@ if __name__ == "__main__":
     fetch_housing_data(housing_url=HOUSING_URL, housing_path=HOUSING_PATH)
     housing = load_housing_data(housing_path=HOUSING_PATH)
 
-    # pandas 연습
     # print(housing.head())
     # print(housing.info()) # info는 데이터에 대한 간략한 설명을 보여줌(전체 행 수, 각 특성의 데이터 타입과 null이 아닌 값의 개수)
     # print(housing["ocean_proximity"].value_counts()) # value_counts 메서드
@@ -40,6 +41,7 @@ if __name__ == "__main__":
     ###
 
 
+# (3) test data 만들기
 import numpy as np
 
 def split_train_test(data, test_ratio):
@@ -48,3 +50,6 @@ def split_train_test(data, test_ratio):
     test_indices = shuffled_indices[:test_set_size]
     train_indices = shuffled_indices[test_set_size:]
     return data.iloc[train_indices], data.iloc[test_indices]
+
+train_set, test_set = split_train_test(housing, 0.2)
+print(len(train_set), "train +", len(test_set), "test")
