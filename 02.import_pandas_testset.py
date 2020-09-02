@@ -7,6 +7,7 @@ DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
 HOUSING_URL = DOWNLOAD_ROOT + "datasets/housing/housing.tgz"
 
+########################################################################################################################
 # (1) 데이터 import
 # - url로 접속하여 압축파일 다운로드 후
 # - 디렉토리 만들고 압축을 풀어 csv 파일로 만들기
@@ -20,6 +21,8 @@ def fetch_housing_data(housing_url=HOUSING_URL, housing_path=HOUSING_PATH):
     housing_tgz.close()
 
 
+
+########################################################################################################################
 # (2) pandas 연습
 # csv 파일을 pandas로 읽기
 def load_housing_data(housing_path=HOUSING_PATH):
@@ -41,6 +44,7 @@ if __name__ == "__main__":
     ###
 
 
+########################################################################################################################
 # (3) test data 만들기
 # 3-1 하지만 이것은 다시 실행하면 다른 테스트 세트가 되어 버린다.
 import numpy as np
@@ -89,5 +93,118 @@ for train_index, test_index in split.split(housing, housing["income_cat"]):
     strat_test_set = housing.loc[test_index]   # 테스트세트
 
 # 테스트 세트 생성은 머신러닝 프로젝트에서 아주 중요한 부분이다.
+
+
+
+########################################################################################################################
+# 데이터 이해를 위한 탐색과 시각화
+
+# (1) 시각화
+
+import matplotlib.pyplot as plt
+
+housing = strat_train_set.copy()
+
+# 산점도 그리기
+# housing.plot(kind="scatter", x="longitude", y="latitude", alpha=0.1)
+# plt.show() # 출력 시 이게 꼭 필요함
+
+# housing.plot(kind="scatter", x="longitude", y="latitude", alpha=0.4,
+#              s=housing["population"]/100, label="population", figsize=(10,7),
+#              c="median_house_value", cmap=plt.get_cmap("jet"), colorbar=True, sharex=False
+#              )
+# plt.legend()
+# plt.show()
+# -> 주택가격은 지역과 인구밀도에 관련이 매우 크다는 사실
+
+
+# (2) 상관관계 조사
+# corr_matrix = housing.corr()
+# corr_matrix["median_house_value"].sort_values(ascending=False)
+
+from pandas.plotting import scatter_matrix # 상관관계를 확인하는 다른 방법으로 숫자형 특성 사이에 산점도를 그려주 pandas 함수 사용
+# attributes = ["median_house_value", "median_income", "total_rooms", "housing_median_age"]
+# scatter_matrix(housing[attributes], figsize=(12, 8))
+# plt.show() # 역시 이거 있어야 함
+
+# housing.plot(kind="scatter", x="median_income", y="median_house_value", alpha=0.1) # 가장 상관관계가 높은 것과 산점도 그리기
+# plt.show()
+
+
+# (3) 특성 조합으로 실험
+# housing["rooms_per_household"] = housing["total_rooms"]/housing["households"]
+# housing["bedrooms_per_room"] = housing["total_bedrooms"]/housing["total_rooms"]
+# housing["population_per_household"] = housing["population"]/housing["households"]
+#
+# corr_matrix = housing.corr()
+# corr_matrix["median_house_value"].sort_values(ascending=False)
+
+
+########################################################################################################################
+# 머신러닝 알고리즘을 위한 데이터 준비
+# - 함수를 만들어서 자동으로 처리되도록 해야 함
+
+housing = strat_train_set.drop("median_house_value", axis=1)
+housing_labels = strat_train_set["median_house_value"].copy()
+
+# (1) 데이터 정제
+# 1-1 숫자형
+#  - total_bedrooms 특성에 값이 없는 경우를 보았는데 이를 고쳐보겠습니다.
+
+# # * 해당 구역을 제거합니다
+# housing.dropna(subset=["total_bedrooms"])
+# # * 전체 특성을 삭제합니다
+# housing.drop("total_bedrooms", axis=1)
+# # * 어떤 값으로 채웁니다 (0, 평균, 중간값)
+median = housing["total_bedrooms"].median()
+housing["total_bedrooms"].fillna(median, inplace=True)
+
+# 사이킷런에서 Imputer 는 누락된 값을 손쉽게 다루도록 해줍니다.
+# --> Imputer 는 사용할 수가 없는데 사이킷런 0.20 버전에서 사용 중지 경고가 발생했다고 함. 아마 없어진듯. 다른것으로 대체해야 할거 같다
+# from sklearn.preprocessing import Imputer
+# imputer = Imputer(strategy="median")
+
+
+# 1-2 텍스트와 범주형
+# 대부분의 머신러닝 알고리즘은 숫자형을 다루므로 이 카테고리를 텍스트에서 숫자로 바꾸도록 함
+# 각 카테고리를 다른 정수값으로 매핑해주는 판다스의 factorize() 메서드를 사용함
+housing_cat = housing["ocean_proximity"]
+housing_cat.head(10)
+housing_cat_encoded, housing_categories = housing_cat.factorize()
+housing_cat_encoded[:10]
+housing_categories # 카테고리도 보여줌
+# print(housing_cat_encoded)
+
+# 원-핫 인코딩: 카테고리별 이진특성으로 변경
+# 사이킷런은 숫자로 된 범주형 값을 원-핫 벡터로 바꿔주는 OneHotEncoder 를 제공
+from sklearn.preprocessing import OneHotEncoder
+encoder = OneHotEncoder()
+housing_cat_1hot = encoder.fit_transform(housing_cat_encoded.reshape(-1, 1))
+housing_cat_1hot.toarray()
+
+# 위처럼 텍스트 카테고리를 숫자 카테고리로, 숫자 카테고리를 원-핫 벡터로 바꿔주는 이 두 가지 변환을 CategoricalEncoder 를 사용하여 한번에 처리할 수 있다 ;;
+# 하지만 CategoricalEncoder 이것도 왜 인지 모르겠지만 불러올 수가 없어서 넘어감
+# from sklearn.preprocessing import CategoricalEncoder
+# cat_encoder = CategoricalEncoder()
+# housing_cat_reshaped = housing_cat.value.reshape(-1, 1)
+# housing_cat_1hot = cat_encoder.fir_transform(housing_cat_reshaped)
+# print(housing_cat_1hot)
+
+
+
+
+# print(housing.info())
+
+
+
+
+
+
+
+
+
+
+
+
 
 
