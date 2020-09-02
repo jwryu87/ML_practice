@@ -193,10 +193,6 @@ housing_cat_1hot.toarray()
 
 
 
-# print(housing.info())
-
-
-
 
 
 
