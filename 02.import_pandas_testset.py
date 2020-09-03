@@ -191,8 +191,33 @@ housing_cat_1hot.toarray()
 # print(housing_cat_1hot)
 
 
+########################################################################################################################
+# 변환 파이프라인
+# 사이킷런에는 연속된 변환을 순서대로 처리할 수 있도록 도와주는 Pipeline 클래스가 존재함
 
+# (1)
+# from sklearn.pipeline import Pipeline
+# from sklearn.preprocessing import StandardScaler
+#
+# num_pipeline = Pipeline([
+#     ('imputer', Imputer(strategy="median")),
+#     ('attribs_adder', CombinedAttributesAdder()),
+#     ('str_scaler', StandardScaler())
+# ])
+#
+# housing_num_tr = num_pipeline.fit_transform(housing_num)
+# -> 이거는 imputer 가 안되서 못함
 
+from sklearn.base import BaseEstimator, TransformerMixin
+
+# (2)
+class DataFrameSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, attribute_names):
+        self.attribute_names = attribute_names
+    def fit(self, X, y=None):
+        return self
+    def transform(self, X):
+        return X[self.attribute_names].values
 
 
 
