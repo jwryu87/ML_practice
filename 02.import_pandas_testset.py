@@ -198,10 +198,10 @@ housing_cat_1hot.toarray()
 
 # 위처럼 텍스트 카테고리를 숫자 카테고리로, 숫자 카테고리를 원-핫 벡터로 바꿔주는 이 두 가지 변환을 CategoricalEncoder 를 사용하여 한번에 처리할 수 있다 ;;
 # 하지만 CategoricalEncoder 이것도 왜 인지 모르겠지만 불러올 수가 없어서 넘어감
-from sklearn.preprocessing import CategoricalEncoder # -> 제작자가 만들어놓고 배포하지 않아서 실행이 안된다고 한다. 황당하다.
-cat_encoder = CategoricalEncoder()
-housing_cat_reshaped = housing_cat.value.reshape(-1, 1)
-housing_cat_1hot = cat_encoder.fir_transform(housing_cat_reshaped)
+from sklearn.preprocessing import OrdinalEncoder # -> 제작자가 만들어놓고 배포하지 않아서 실행이 안된다고 한다. 황당하다. 그래서 (CategoricalEncoder -> OrdinalEncoder) 로 바꿈
+cat_encoder = OrdinalEncoder()
+# housing_cat_reshaped = housing_cat.value.reshape(-1, 1)
+# housing_cat_1hot = cat_encoder.fit_transform(housing_cat_reshaped)
 
 
 # 1-3 나만의 변환기
@@ -267,7 +267,7 @@ num_pipeline = Pipeline([
 
 cat_pipeline = Pipeline([
     ('selector', DataFrameSelector(cat_attribs)),
-    ('cat_encoder', CategoricalEncoder(encoding="onehot-dense")),
+    ('cat_encoder', OrdinalEncoder()),
 ])
 
 # (4)
@@ -281,7 +281,7 @@ full_pipeline = FeatureUnion(transformer_list=[
 
 # (5)
 housing_prepared = full_pipeline.fit_transform(housing)
-print(housing_prepared)
+housing_prepared.shape
 
 
 
@@ -289,10 +289,75 @@ print(housing_prepared)
 
 ########################################################################################################################
 # 모델 선택과 훈련
-# from sklearn.linear_model import LinearRegression
-#
-# lin_reg = LinearRegression()
-# lin_reg.fit(housing_prepared, housing_labels)
+from sklearn.linear_model import LinearRegression # 선형회귀
+
+lin_reg = LinearRegression()
+lin_reg.fit(housing_prepared, housing_labels)
+
+# 이게 끝입니다!
+
+some_data = housing.iloc[:5]
+some_labels = housing_labels.iloc[:5]
+some_data_prepared = full_pipeline.transform(some_data)
+# print("예측: ", lin_reg.predict(some_data_prepared))
+# print("레이블: ", list(some_labels))
+
+# 이 회귀모델의 RMSE를 측정해보겠습니다
+from sklearn.metrics import mean_squared_error
+housing_predictions = lin_reg.predict(housing_prepared)
+lin_mse = mean_squared_error(housing_labels, housing_predictions)
+lin_rmse = np.sqrt(lin_mse)
+# print(lin_rmse)
+
+# 다른 모델: DecisionTreeRegressor 을 사용한 비선형 어쩌고
+from sklearn.tree import DecisionTreeRegressor
+tree_reg = DecisionTreeRegressor()
+tree_reg.fit(housing_prepared, housing_labels)
+
+housing_predictions = tree_reg.predict(housing_prepared)
+tree_mse = mean_squared_error(housing_labels, housing_predictions)
+tree_rmse = np.sqrt(tree_mse)
+# print(tree_rmse)
+
+
+
+########################################################################################################################
+# 교차검증을 사용한 평가
+# 사이킷런의 교차 검증 기능을 사용: K-겹 교차검증
+# 훈련 세트를 폴드라 불리는 10개의 서브셋으로 무작위로 분할 후 결정트리 모델을 10번 훈현하고 평가
+
+from sklearn.model_selection import cross_val_score
+scores = cross_val_score(tree_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-scores)
+
+def display_scores(scores):
+    print("Scores:", scores)
+    print("Mean:", scores.mean())
+    print("Standard deviation:", scores.std())
+
+# display_scores(tree_rmse_scores) # 결정트리 모델
+
+lin_scores = cross_val_score(lin_reg, housing_prepared, housing_labels,scoring="neg_mean_squared_error", cv=10)
+lin_rmse_scores = np.sqrt(-lin_scores)
+# display_scores(lin_rmse_scores) # 선형회귀 모델
+
+
+# from sklearn.ensemble import RandomForestRegressor
+# forest_reg = RandomForestRegressor()
+# forest_reg.fit(housing_prepared, housing_labels)
+# forest_rmse
+# display_scores(forest_rmse_scores) # 랜덤포레스트 모델 (이 부분의 소스는 샘플이어서 실행 시킬 수 없다)
+
+
+
+
+
+
+
+
+
+
+
 
 
 
