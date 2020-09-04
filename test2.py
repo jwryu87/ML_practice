@@ -1,7 +1,1 @@
-
-from sklearn.impute import SimpleImputer
-
-imputer = SimpleImputer(strategy="median")
-
-
-
+from sklearn.datasets import fetch_mldata
