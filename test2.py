@@ -1,8 +1,7 @@
-# import os
-# os.system('python 02.import_pandas_testset.py')
-# print(strat_train_set)
 
-from subprocess import call
-call(["python", "02.import_pandas_testset.py"])
+from sklearn.impute import SimpleImputer
 
-print(strat_train_set)
+imputer = SimpleImputer(strategy="median")
+
+
+

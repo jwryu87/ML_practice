@@ -2,10 +2,17 @@ import os
 import tarfile
 from six.moves import urllib
 import pandas as pd
+import sys
+
 
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
 HOUSING_URL = DOWNLOAD_ROOT + "datasets/housing/housing.tgz"
+
+# 가. 문제 정의
+# 나. 데이터 로딩 후 탐색
+# 다. 훈련세트, 테스트세트
+# 라. 변환 파이프라인 (ml 알고리즘에 주입할 데이터를 자동으로 정제하고 준비)
 
 ########################################################################################################################
 # (1) 데이터 import
@@ -163,7 +170,14 @@ housing["total_bedrooms"].fillna(median, inplace=True)
 # --> Imputer 는 사용할 수가 없는데 사이킷런 0.20 버전에서 사용 중지 경고가 발생했다고 함. 아마 없어진듯. 다른것으로 대체해야 할거 같다
 # from sklearn.preprocessing import Imputer
 # imputer = Imputer(strategy="median")
+from sklearn.impute import SimpleImputer
+imputer = SimpleImputer(strategy="median")
 
+# 중간값이 수치형 특성에서만 계산될 수 있기 때문에 텍스트 특성인 컬럼을 (ocean_proxomity) 제외한 데이터 복사본을 생성한다.
+housing_num = housing.drop("ocean_proximity", axis=1)
+imputer.fit(housing_num)
+X = imputer.transform(housing_num) # 학습된 imputer 객체를 사용해 훈련세트에서 누락된 값을 학습한 중간값으로 바꿀 수 있다.
+housing_tr = pd.DataFrame(X, columns=housing_num.columns, index=list(housing.index.values)) # 이 결과는 변형된 특성들이 들어 있는 평범한 넘파이 배열입니다. 이를 다시 판다스 데이터플임으로 간단히 되돌릴 수 있습니다.
 
 # 1-2 텍스트와 범주형
 # 대부분의 머신러닝 알고리즘은 숫자형을 다루므로 이 카테고리를 텍스트에서 숫자로 바꾸도록 함
@@ -184,11 +198,34 @@ housing_cat_1hot.toarray()
 
 # 위처럼 텍스트 카테고리를 숫자 카테고리로, 숫자 카테고리를 원-핫 벡터로 바꿔주는 이 두 가지 변환을 CategoricalEncoder 를 사용하여 한번에 처리할 수 있다 ;;
 # 하지만 CategoricalEncoder 이것도 왜 인지 모르겠지만 불러올 수가 없어서 넘어감
-# from sklearn.preprocessing import CategoricalEncoder
-# cat_encoder = CategoricalEncoder()
-# housing_cat_reshaped = housing_cat.value.reshape(-1, 1)
-# housing_cat_1hot = cat_encoder.fir_transform(housing_cat_reshaped)
-# print(housing_cat_1hot)
+from sklearn.preprocessing import CategoricalEncoder # -> 제작자가 만들어놓고 배포하지 않아서 실행이 안된다고 한다. 황당하다.
+cat_encoder = CategoricalEncoder()
+housing_cat_reshaped = housing_cat.value.reshape(-1, 1)
+housing_cat_1hot = cat_encoder.fir_transform(housing_cat_reshaped)
+
+
+# 1-3 나만의 변환기
+from sklearn.base import BaseEstimator, TransformerMixin
+
+rooms_ix, bedrooms_ix, population_ix, household_ix = 3, 4, 5, 6
+
+class CombinedAttributesAdder(BaseEstimator, TransformerMixin):
+    def __init__(self, add_bedrooms_per_room = True):
+        self.add_bedrooms_per_rooms = add_bedrooms_per_room
+    def fit(self, X, y=None):
+        return self # 더 할 일이 없습니다
+    def transform(self, X, y=None):
+        rooms_per_household = X[:, rooms_ix] / X[:, household_ix]
+        population_per_household = X[:, population_ix] / X[:, household_ix]
+        if self.add_bedrooms_per_rooms:
+            bedrooms_per_room = X[:, bedrooms_ix] / X[:, rooms_ix]
+            return np.c_[X, rooms_per_household, population_per_household, bedrooms_per_room]
+        else:
+            return np.c_[X, rooms_per_household, population_per_household]
+
+attr_adder = CombinedAttributesAdder(add_bedrooms_per_room=False)
+housing_extra_attribs = attr_adder.transform(housing.values)
+
 
 
 ########################################################################################################################
@@ -196,21 +233,19 @@ housing_cat_1hot.toarray()
 # 사이킷런에는 연속된 변환을 순서대로 처리할 수 있도록 도와주는 Pipeline 클래스가 존재함
 
 # (1)
-# from sklearn.pipeline import Pipeline
-# from sklearn.preprocessing import StandardScaler
-#
-# num_pipeline = Pipeline([
-#     ('imputer', Imputer(strategy="median")),
-#     ('attribs_adder', CombinedAttributesAdder()),
-#     ('str_scaler', StandardScaler())
-# ])
-#
-# housing_num_tr = num_pipeline.fit_transform(housing_num)
-# -> 이거는 imputer 가 안되서 못함
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
-from sklearn.base import BaseEstimator, TransformerMixin
+num_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy="median")),
+    ('attribs_adder', CombinedAttributesAdder()),
+    ('str_scaler', StandardScaler())
+])
+
+housing_num_tr = num_pipeline.fit_transform(housing_num)
 
 # (2)
+from sklearn.base import BaseEstimator, TransformerMixin
 class DataFrameSelector(BaseEstimator, TransformerMixin):
     def __init__(self, attribute_names):
         self.attribute_names = attribute_names
@@ -219,7 +254,45 @@ class DataFrameSelector(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return X[self.attribute_names].values
 
+# (3)
+num_attribs = list(housing_num)
+cat_attribs = ["ocean_proximity"]
 
+num_pipeline = Pipeline([
+    ('selector', DataFrameSelector(num_attribs)),
+    ('imputer', SimpleImputer(strategy="median")),
+    ('attribs_adder', CombinedAttributesAdder()),
+    ('std_scaler', StandardScaler()),
+])
+
+cat_pipeline = Pipeline([
+    ('selector', DataFrameSelector(cat_attribs)),
+    ('cat_encoder', CategoricalEncoder(encoding="onehot-dense")),
+])
+
+# (4)
+
+from sklearn.pipeline import FeatureUnion # 두 파이프라인을 하나로 합치기
+
+full_pipeline = FeatureUnion(transformer_list=[
+    ("num_pipeline", num_pipeline),
+    ("cat_pipeline", cat_pipeline),
+])
+
+# (5)
+housing_prepared = full_pipeline.fit_transform(housing)
+print(housing_prepared)
+
+
+
+
+
+########################################################################################################################
+# 모델 선택과 훈련
+# from sklearn.linear_model import LinearRegression
+#
+# lin_reg = LinearRegression()
+# lin_reg.fit(housing_prepared, housing_labels)
 
 
 
