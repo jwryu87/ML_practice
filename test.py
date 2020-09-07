@@ -1,5 +1,7 @@
-from sklearn.datasets  import load_digits
-mnist = load_digits()
-X, y = mnist["data"], mnist["target"]
-print(X.shape)
-print(y.shape)
+import numpy as np
+import matplotlib.pyplot as plt
+
+X = 2 * np.random.rand(100, 1)
+y = 4 + 3 * X + np.random.rand(100, 1)
+y.hist(bins=50, figsize=(20, 15))
+plt.show()
