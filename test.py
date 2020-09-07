@@ -1,6 +1,5 @@
-
-# 사이킷런의 data_home의 위치를 알아낸다.
-from sklearn import datasets
-print(datasets.get_data_home())
-
-C:\Users\jwryu87\scikit_learn_data\mldata\
+from sklearn.datasets  import load_digits
+mnist = load_digits()
+X, y = mnist["data"], mnist["target"]
+print(X.shape)
+print(y.shape)
